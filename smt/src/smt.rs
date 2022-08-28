@@ -164,7 +164,7 @@ impl<F: FieldExt, H: FieldHasher<F, 2>, const N: usize> SparseMerkleTree<F, H, N
                 let left_index = left_child(i);
                 let right_index = right_child(i);
 
-                let empty_hash = self.empty_hashes[level].clone();
+                let empty_hash = self.empty_hashes[level];
                 let left = self.tree.get(&left_index).unwrap_or(&empty_hash);
                 let right = self.tree.get(&right_index).unwrap_or(&empty_hash);
                 self.tree.insert(i, hasher.hash([*left, *right])?);
@@ -213,7 +213,7 @@ impl<F: FieldExt, H: FieldHasher<F, 2>, const N: usize> SparseMerkleTree<F, H, N
         let pairs: BTreeMap<u32, F> = leaves
             .iter()
             .enumerate()
-            .map(|(i, l)| (i as u32, l.clone()))
+            .map(|(i, l)| (i as u32, *l))
             .collect();
         let smt = Self::new(&pairs, hasher, empty_leaf)?;
 
@@ -248,12 +248,12 @@ impl<F: FieldExt, H: FieldHasher<F, 2>, const N: usize> SparseMerkleTree<F, H, N
                 .tree
                 .get(&current_node)
                 .cloned()
-                .unwrap_or_else(|| empty_hash.clone());
+                .unwrap_or(*empty_hash);
             let sibling = self
                 .tree
                 .get(&sibling_node)
                 .cloned()
-                .unwrap_or_else(|| empty_hash.clone());
+                .unwrap_or(*empty_hash);
 
             if is_left_child(current_node) {
                 path[level] = (current, sibling);
@@ -377,9 +377,8 @@ mod test {
             .enumerate()
             .map(|(i, l)| (i as u32, *l))
             .collect();
-        let smt = SparseMerkleTree::<F, H, N>::new(&pairs, &hasher, default_leaf).unwrap();
 
-        smt
+        SparseMerkleTree::<F, H, N>::new(&pairs, &hasher, default_leaf).unwrap()
     }
 
     #[test]

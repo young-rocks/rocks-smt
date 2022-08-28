@@ -1,0 +1,12 @@
+[package]
+name = "chiplet"
+version = "0.1.0"
+edition = "2021"
+authors = ["Guangyu Zhu <guangyuz@gmail.com>"]
+
+[dependencies]
+halo2_proofs = { path = "../../halo2/halo2_proofs"}
+halo2_gadgets = { path = "../../halo2/halo2_gadgets"}
+smt = { path = "../smt"}
+
+

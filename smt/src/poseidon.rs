@@ -34,6 +34,12 @@ impl<F: FieldExt, const SECURE_MDS: usize> Spec<F, 3, 2> for SmtP128Pow5T3<F, SE
     }
 }
 
+impl<F: FieldExt, const SECURE_MDS: usize> Default for SmtP128Pow5T3<F, SECURE_MDS> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Poseidon<F: FieldExt, const L: usize>(PhantomData<F>);
 
@@ -54,6 +60,12 @@ where
     fn hash(&self, inputs: [F; L]) -> Result<F> {
         let hasher = Hash::<_, SmtP128Pow5T3<F, 0>, ConstantLength<L>, 3, 2>::init();
         Ok(hasher.hash(inputs))
+    }
+}
+
+impl<F: FieldExt, const L: usize> Default for Poseidon<F, L> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
