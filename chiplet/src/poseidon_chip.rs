@@ -53,15 +53,11 @@ impl<
         let rc_b = [(); WIDTH].map(|_| meta.fixed_column());
 
         meta.enable_constant(rc_b[0]);
-        state.iter().for_each(|column| meta.enable_equality(*column));
+        state
+            .iter()
+            .for_each(|column| meta.enable_equality(*column));
 
-        let pow5_config = Pow5Chip::configure::<S>(
-            meta,
-            state,
-            partial_sbox,
-            rc_a,
-            rc_b,
-        );
+        let pow5_config = Pow5Chip::configure::<S>(meta, state, partial_sbox, rc_a, rc_b);
 
         PoseidonConfig {
             pow5_config,
@@ -159,7 +155,9 @@ mod tests {
             let inputs = [(); L].map(|_| meta.advice_column());
             let output = meta.advice_column();
 
-            inputs.iter().for_each(|column| meta.enable_equality(*column));
+            inputs
+                .iter()
+                .for_each(|column| meta.enable_equality(*column));
             meta.enable_equality(output);
 
             TestConfig {

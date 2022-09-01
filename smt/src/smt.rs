@@ -244,16 +244,8 @@ impl<F: FieldExt, H: FieldHasher<F, 2>, const N: usize> SparseMerkleTree<F, H, N
 
             let empty_hash = &self.empty_hashes[level];
 
-            let current = self
-                .tree
-                .get(&current_node)
-                .cloned()
-                .unwrap_or(*empty_hash);
-            let sibling = self
-                .tree
-                .get(&sibling_node)
-                .cloned()
-                .unwrap_or(*empty_hash);
+            let current = self.tree.get(&current_node).cloned().unwrap_or(*empty_hash);
+            let sibling = self.tree.get(&sibling_node).cloned().unwrap_or(*empty_hash);
 
             if is_left_child(current_node) {
                 path[level] = (current, sibling);
