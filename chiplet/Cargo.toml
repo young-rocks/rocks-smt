@@ -8,4 +8,5 @@ authors = ["Guangyu Zhu <guangyuz@gmail.com>"]
 halo2_proofs = { path = "../../halo2/halo2_proofs"}
 halo2_gadgets = { path = "../../halo2/halo2_gadgets"}
 smt = { path = "../smt" }
+rand = "0.8"
 

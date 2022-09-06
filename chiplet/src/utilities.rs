@@ -9,21 +9,22 @@ use halo2_proofs::{
 };
 use std::marker::PhantomData;
 
-const NUM_OF_ADVICE_COLUMNS: usize = 4;
+pub const NUM_OF_UTILITY_ADVICE_COLUMNS: usize = 4;
 
 #[derive(Clone, Debug)]
-pub struct ConditionalSelectConfig {
-    advices: [Column<Advice>; NUM_OF_ADVICE_COLUMNS],
+pub struct ConditionalSelectConfig<F: FieldExt> {
+    advices: [Column<Advice>; NUM_OF_UTILITY_ADVICE_COLUMNS],
     s_cs: Selector,
+    _marker: PhantomData<F>,
 }
 
 pub struct ConditionalSelectChip<F: FieldExt> {
-    config: ConditionalSelectConfig,
+    config: ConditionalSelectConfig<F>,
     _marker: PhantomData<F>,
 }
 
 impl<F: FieldExt> Chip<F> for ConditionalSelectChip<F> {
-    type Config = ConditionalSelectConfig;
+    type Config = ConditionalSelectConfig<F>;
     type Loaded = ();
 
     fn config(&self) -> &Self::Config {
@@ -48,7 +49,7 @@ impl<F: FieldExt> ConditionalSelectChip<F> {
 
     pub fn configure(
         meta: &mut ConstraintSystem<F>,
-        advices: [Column<Advice>; NUM_OF_ADVICE_COLUMNS],
+        advices: [Column<Advice>; NUM_OF_UTILITY_ADVICE_COLUMNS],
     ) -> <Self as Chip<F>>::Config {
         for column in &advices {
             meta.enable_equality(*column);
@@ -65,18 +66,22 @@ impl<F: FieldExt> ConditionalSelectChip<F> {
 
             vec![
                 // cond is 0 or 1
-                s_cs.clone() * (cond.clone() * (one.clone() - cond.clone())),
+                s_cs.clone() * (cond.clone() * (one - cond.clone())),
                 // lhs * cond + rhs * (1 - cond) = out
                 s_cs * ((lhs - rhs.clone()) * cond + rhs - out),
             ]
         });
 
-        ConditionalSelectConfig { advices, s_cs }
+        ConditionalSelectConfig {
+            advices,
+            s_cs,
+            _marker: PhantomData,
+        }
     }
 
     pub fn conditional_select(
         &self,
-        mut layouter: impl Layouter<F>,
+        layouter: &mut impl Layouter<F>,
         a: AssignedCell<F, F>,
         b: AssignedCell<F, F>,
         cond: AssignedCell<F, F>,
@@ -111,8 +116,8 @@ impl<F: FieldExt> ConditionalSelectChip<F> {
 
 #[derive(Clone, Debug)]
 pub struct IsEqualConfig<F: FieldExt> {
-    s_eq: Selector,
-    advices: [Column<Advice>; NUM_OF_ADVICE_COLUMNS],
+    s_is_eq: Selector,
+    advices: [Column<Advice>; NUM_OF_UTILITY_ADVICE_COLUMNS],
     _marker: PhantomData<F>,
 }
 
@@ -147,37 +152,37 @@ impl<F: FieldExt> IsEqualChip<F> {
 
     pub fn configure(
         meta: &mut ConstraintSystem<F>,
-        advices: [Column<Advice>; NUM_OF_ADVICE_COLUMNS],
+        advices: [Column<Advice>; NUM_OF_UTILITY_ADVICE_COLUMNS],
     ) -> <Self as Chip<F>>::Config {
-        let s_eq = meta.selector();
+        let s_is_eq = meta.selector();
         meta.create_gate("eq", |meta| {
             let lhs = meta.query_advice(advices[0], Rotation::cur());
             let rhs = meta.query_advice(advices[1], Rotation::cur());
             let out = meta.query_advice(advices[2], Rotation::cur());
             let delta_invert = meta.query_advice(advices[3], Rotation::cur());
-            let s_eq = meta.query_selector(s_eq);
+            let s_is_eq = meta.query_selector(s_is_eq);
             let one = Expression::Constant(F::one());
 
             vec![
                 // out is 0 or 1
-                s_eq.clone() * (out.clone() * (one.clone() - out.clone())),
+                s_is_eq.clone() * (out.clone() * (one.clone() - out.clone())),
                 // if a != b then (a - b) * inverse(a - b) == 1 - out
                 // if a == b then (a - b) * 1 == 1 - out
-                s_eq.clone()
+                s_is_eq.clone()
                     * ((lhs.clone() - rhs.clone()) * delta_invert.clone() + (out - one.clone())),
                 // constrain delta_invert: (a - b) * inverse(a - b) must be 1 or 0
-                s_eq * (lhs.clone() - rhs.clone()) * ((lhs - rhs) * delta_invert - one),
+                s_is_eq * (lhs.clone() - rhs.clone()) * ((lhs - rhs) * delta_invert - one),
             ]
         });
 
         IsEqualConfig {
-            s_eq,
+            s_is_eq,
             advices,
             _marker: PhantomData,
         }
     }
 
-    pub fn assign(
+    pub fn is_eq_with_output(
         &self,
         layouter: &mut impl Layouter<F>,
         a: AssignedCell<F, F>,
@@ -186,9 +191,9 @@ impl<F: FieldExt> IsEqualChip<F> {
         let config = self.config();
 
         let out = layouter.assign_region(
-            || "eq",
+            || "is_eq",
             |mut region: Region<'_, F>| {
-                config.s_eq.enable(&mut region, 0)?;
+                config.s_is_eq.enable(&mut region, 0)?;
 
                 let a_field = a.value().copied().to_field();
                 let b_field = b.value().copied().to_field();
@@ -201,13 +206,12 @@ impl<F: FieldExt> IsEqualChip<F> {
                     config.advices[3],
                     0,
                     || {
-                        let delta_invert = if a_field == b_field {
+                        if a_field == b_field {
                             Value::known(F::one())
                         } else {
                             let delta = a_field - b_field;
                             delta.invert().evaluate()
-                        };
-                        delta_invert
+                        }
                     },
                 )?;
 
@@ -223,5 +227,84 @@ impl<F: FieldExt> IsEqualChip<F> {
         )?;
 
         Ok(out)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct AssertEqualConfig<F: FieldExt> {
+    s_eq: Selector,
+    advices: [Column<Advice>; 2],
+    _marker: PhantomData<F>,
+}
+
+pub struct AssertEqualChip<F: FieldExt> {
+    config: AssertEqualConfig<F>,
+    _marker: PhantomData<F>,
+}
+
+impl<F: FieldExt> Chip<F> for AssertEqualChip<F> {
+    type Config = AssertEqualConfig<F>;
+    type Loaded = ();
+
+    fn config(&self) -> &Self::Config {
+        &self.config
+    }
+
+    fn loaded(&self) -> &Self::Loaded {
+        &()
+    }
+}
+
+impl<F: FieldExt> AssertEqualChip<F> {
+    pub fn construct(
+        config: <Self as Chip<F>>::Config,
+        _loaded: <Self as Chip<F>>::Loaded,
+    ) -> Self {
+        Self {
+            config,
+            _marker: PhantomData,
+        }
+    }
+
+    pub fn configure(
+        meta: &mut ConstraintSystem<F>,
+        advices: [Column<Advice>; 2],
+    ) -> <Self as Chip<F>>::Config {
+        let s_eq = meta.selector();
+        meta.create_gate("eq", |meta| {
+            let lhs = meta.query_advice(advices[0], Rotation::cur());
+            let rhs = meta.query_advice(advices[1], Rotation::cur());
+            let s_eq = meta.query_selector(s_eq);
+
+            vec![s_eq * (lhs - rhs)]
+        });
+
+        AssertEqualConfig {
+            s_eq,
+            advices,
+            _marker: PhantomData,
+        }
+    }
+
+    pub fn assert_equal(
+        &self,
+        layouter: &mut impl Layouter<F>,
+        a: AssignedCell<F, F>,
+        b: AssignedCell<F, F>,
+    ) -> Result<(), Error> {
+        let config = self.config();
+
+        layouter.assign_region(
+            || "is_eq",
+            |mut region: Region<'_, F>| {
+                config.s_eq.enable(&mut region, 0)?;
+
+                a.copy_advice(|| "copy a", &mut region, config.advices[0], 0)?;
+                b.copy_advice(|| "copy b", &mut region, config.advices[1], 0)?;
+                Ok(())
+            },
+        )?;
+
+        Ok(())
     }
 }

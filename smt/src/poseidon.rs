@@ -7,7 +7,7 @@ use halo2_proofs::arithmetic::FieldExt;
 use std::marker::PhantomData;
 
 /// The same Poseidon specification as poseidon::P128Pow5T3
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SmtP128Pow5T3<F: FieldExt, const SECURE_MDS: usize>(PhantomData<F>);
 
 impl<F: FieldExt, const SECURE_MDS: usize> SmtP128Pow5T3<F, SECURE_MDS> {
@@ -51,6 +51,7 @@ impl<F: FieldExt, const L: usize> Poseidon<F, L> {
 
 pub trait FieldHasher<F: FieldExt, const L: usize> {
     fn hash(&self, inputs: [F; L]) -> Result<F>;
+    fn hasher() -> Self;
 }
 
 impl<F, const L: usize> FieldHasher<F, L> for Poseidon<F, L>
@@ -58,8 +59,11 @@ where
     F: FieldExt,
 {
     fn hash(&self, inputs: [F; L]) -> Result<F> {
-        let hasher = Hash::<_, SmtP128Pow5T3<F, 0>, ConstantLength<L>, 3, 2>::init();
-        Ok(hasher.hash(inputs))
+        Ok(Hash::<_, SmtP128Pow5T3<F, 0>, ConstantLength<L>, 3, 2>::init().hash(inputs))
+    }
+
+    fn hasher() -> Self {
+        Poseidon::<F, L>::default()
     }
 }
 

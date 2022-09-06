@@ -352,7 +352,7 @@ fn parent(index: u64) -> Option<u64> {
 mod test {
     use super::{gen_empty_hashes, SparseMerkleTree};
     use crate::poseidon::{FieldHasher, Poseidon};
-    use group::ff::Field;
+    use halo2_proofs::arithmetic::Field;
     use halo2_proofs::arithmetic::FieldExt;
     use halo2_proofs::pasta::Fp;
     use rand::rngs::OsRng;
