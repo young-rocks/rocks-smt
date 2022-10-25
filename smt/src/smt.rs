@@ -160,14 +160,17 @@ impl<F: FieldExt, H: FieldHasher<F, 2>, const N: usize> SparseMerkleTree<F, H, N
 
         for level in 0..N {
             let mut new_idxs: BTreeSet<u64> = BTreeSet::new();
+            let empty_hash = self.empty_hashes[level];
             for i in level_idxs {
                 let left_index = left_child(i);
                 let right_index = right_child(i);
-
-                let empty_hash = self.empty_hashes[level];
                 let left = self.tree.get(&left_index).unwrap_or(&empty_hash);
                 let right = self.tree.get(&right_index).unwrap_or(&empty_hash);
-                self.tree.insert(i, hasher.hash([*left, *right])?);
+                if empty_hash == *left && empty_hash == *right && level < N-1 {
+                    self.tree.insert(i, self.empty_hashes[level+1]);
+                } else {
+                    self.tree.insert(i, hasher.hash([*left, *right])?);
+                }
 
                 let parent = match parent(i) {
                     Some(i) => i,
