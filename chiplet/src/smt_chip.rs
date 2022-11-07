@@ -201,7 +201,7 @@ mod test {
 
     use super::{PathChip, PathConfig};
     use crate::utilities::{AssertEqualChip, AssertEqualConfig};
-    use crate::benchmark::measure;
+    use crate::measure;
     use halo2_gadgets::poseidon::primitives::Spec;
     use halo2_proofs::plonk::{create_proof, keygen_pk, keygen_vk, verify_proof, SingleVerifier};
     use halo2_proofs::poly::commitment::Params;
@@ -340,24 +340,6 @@ mod test {
         }
     }
 
-//    macro_rules! measure {
-//        ($task:block, $backend:expr, $task_name:expr, $num_iter:expr) => {{
-//            let start = Instant::now();
-//            for _ in 0..($num_iter - 1) {
-//                $task;
-//            }
-//            let res = $task;
-//            let end = start.elapsed();
-//            println!(
-//                "{}: Average {} time: {:?}",
-//                $backend,
-//                $task_name,
-//                end / $num_iter
-//                );
-//            res
-//        }};
-//    }
-
     #[test]
     fn should_verify_path() {
         // Circuit is very small, we pick a small value here
@@ -401,6 +383,7 @@ mod test {
     }
 
     #[test]
+    #[allow(path_statements)]
     fn should_verify_path_benchmark() {
         // Circuit is very small, we pick a small value here
         let k = 13;

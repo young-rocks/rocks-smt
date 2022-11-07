@@ -1,8 +1,8 @@
 //use std::time::Instant;
 
-//#[macro_export]
 #[cfg(test)]
 mod test {
+    #[macro_export]
     macro_rules! measure {
         ($task:block, $backend:expr, $task_name:expr, $num_iter:expr) => {
             let start = Instant::now();
