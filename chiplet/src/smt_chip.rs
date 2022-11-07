@@ -11,6 +11,7 @@
 //! For more info on the Sparse Merkle Tree data structure, see the
 //! documentation for the native implementation.
 
+
 use crate::poseidon_chip::{PoseidonChip, PoseidonConfig};
 use crate::utilities::{
     AssertEqualChip, AssertEqualConfig, ConditionalSelectChip, ConditionalSelectConfig,
@@ -194,10 +195,13 @@ impl<
     }
 }
 
+
 #[cfg(test)]
 mod test {
+
     use super::{PathChip, PathConfig};
     use crate::utilities::{AssertEqualChip, AssertEqualConfig};
+    use crate::benchmark::measure;
     use halo2_gadgets::poseidon::primitives::Spec;
     use halo2_proofs::plonk::{create_proof, keygen_pk, keygen_vk, verify_proof, SingleVerifier};
     use halo2_proofs::poly::commitment::Params;
@@ -213,6 +217,7 @@ mod test {
     use smt::smt::SparseMerkleTree;
     use std::clone::Clone;
     use std::marker::PhantomData;
+    use std::time::Instant;
 
     #[derive(Clone)]
     struct TestConfig<
@@ -335,6 +340,24 @@ mod test {
         }
     }
 
+//    macro_rules! measure {
+//        ($task:block, $backend:expr, $task_name:expr, $num_iter:expr) => {{
+//            let start = Instant::now();
+//            for _ in 0..($num_iter - 1) {
+//                $task;
+//            }
+//            let res = $task;
+//            let end = start.elapsed();
+//            println!(
+//                "{}: Average {} time: {:?}",
+//                $backend,
+//                $task_name,
+//                end / $num_iter
+//                );
+//            res
+//        }};
+//    }
+
     #[test]
     fn should_verify_path() {
         // Circuit is very small, we pick a small value here
@@ -355,18 +378,62 @@ mod test {
         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()));
 
+        let now = Instant::now();
         let params: Params<EqAffine> = Params::new(k);
         let vk = keygen_vk(&params, &circuit).expect("keygen_vk should not fail");
         let pk = keygen_pk(&params, vk, &circuit).expect("keygen_pk should not fail");
+        println!("keygen time is {:?}", now.elapsed());
 
+        let now = Instant::now();
         let mut transcript = Blake2bWrite::<_, _, Challenge255<_>>::init(vec![]);
         create_proof(&params, &pk, &[circuit], &[&[]], OsRng, &mut transcript)
             .expect("proof generation should not fail");
         let proof: Vec<u8> = transcript.finalize();
+        println!("create_proof time is {:?}", now.elapsed());
 
+        let now = Instant::now();
         let strategy = SingleVerifier::new(&params);
         let mut transcript = Blake2bRead::<_, _, Challenge255<_>>::init(&proof[..]);
         let result = verify_proof(&params, pk.get_vk(), strategy, &[&[]], &mut transcript);
+        println!("verify_proof time is {:?}", now.elapsed());
+
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn should_verify_path_benchmark() {
+        // Circuit is very small, we pick a small value here
+        let k = 13;
+
+        let empty_leaf = [0u8; 64];
+        let rng = OsRng;
+        let leaves = [Fp::random(rng), Fp::random(rng), Fp::random(rng)];
+        const HEIGHT: usize = 3;
+        let num_iter =3;
+
+        measure!({
+            let circuit = TestCircuit::<Fp, SmtP128Pow5T3<Fp, 0>, Poseidon<Fp, 2>, 3, 2, HEIGHT> {
+                leaves,
+                empty_leaf,
+                hasher: Poseidon::<Fp, 2>::new(),
+                _spec: PhantomData,
+            };
+
+            let prover = MockProver::run(k, &circuit, vec![]).unwrap();
+            assert_eq!(prover.verify(), Ok(()));
+
+            let params: Params<EqAffine> = Params::new(k);
+            let vk = keygen_vk(&params, &circuit).expect("keygen_vk should not fail");
+            let pk = keygen_pk(&params, vk, &circuit).expect("keygen_pk should not fail");
+            let mut transcript = Blake2bWrite::<_, _, Challenge255<_>>::init(vec![]);
+            create_proof(&params, &pk, &[circuit], &[&[]], OsRng, &mut transcript)
+                .expect("proof generation should not fail");
+            let proof: Vec<u8> = transcript.finalize();
+
+            let strategy = SingleVerifier::new(&params);
+            let mut transcript = Blake2bRead::<_, _, Challenge255<_>>::init(&proof[..]);
+            let result = verify_proof(&params, pk.get_vk(), strategy, &[&[]], &mut transcript);
+            assert!(result.is_ok());
+        }, "hola2", "proof", num_iter);
     }
 }
