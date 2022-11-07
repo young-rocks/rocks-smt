@@ -21,11 +21,3 @@ mod test {
         };
     }
 }
-
-//fn test() -> u32 {
-//    1
-//}
-//pub fn test_measure() {
-//    let r = measure!({test()}, "2", "3", 4);
-//    println!("test {}", r);
-//}
