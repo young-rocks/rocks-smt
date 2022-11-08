@@ -11,7 +11,6 @@
 //! For more info on the Sparse Merkle Tree data structure, see the
 //! documentation for the native implementation.
 
-
 use crate::poseidon_chip::{PoseidonChip, PoseidonConfig};
 use crate::utilities::{
     AssertEqualChip, AssertEqualConfig, ConditionalSelectChip, ConditionalSelectConfig,
@@ -195,13 +194,12 @@ impl<
     }
 }
 
-
 #[cfg(test)]
 mod test {
 
     use super::{PathChip, PathConfig};
-    use crate::utilities::{AssertEqualChip, AssertEqualConfig};
     use crate::measure;
+    use crate::utilities::{AssertEqualChip, AssertEqualConfig};
     use halo2_gadgets::poseidon::primitives::Spec;
     use halo2_proofs::plonk::{create_proof, keygen_pk, keygen_vk, verify_proof, SingleVerifier};
     use halo2_proofs::poly::commitment::Params;
@@ -392,31 +390,37 @@ mod test {
         let rng = OsRng;
         let leaves = [Fp::random(rng), Fp::random(rng), Fp::random(rng)];
         const HEIGHT: usize = 3;
-        let num_iter =3;
+        let num_iter = 3;
 
-        measure!({
-            let circuit = TestCircuit::<Fp, SmtP128Pow5T3<Fp, 0>, Poseidon<Fp, 2>, 3, 2, HEIGHT> {
-                leaves,
-                empty_leaf,
-                hasher: Poseidon::<Fp, 2>::new(),
-                _spec: PhantomData,
-            };
+        measure!(
+            {
+                let circuit =
+                    TestCircuit::<Fp, SmtP128Pow5T3<Fp, 0>, Poseidon<Fp, 2>, 3, 2, HEIGHT> {
+                        leaves,
+                        empty_leaf,
+                        hasher: Poseidon::<Fp, 2>::new(),
+                        _spec: PhantomData,
+                    };
 
-            let prover = MockProver::run(k, &circuit, vec![]).unwrap();
-            assert_eq!(prover.verify(), Ok(()));
+                let prover = MockProver::run(k, &circuit, vec![]).unwrap();
+                assert_eq!(prover.verify(), Ok(()));
 
-            let params: Params<EqAffine> = Params::new(k);
-            let vk = keygen_vk(&params, &circuit).expect("keygen_vk should not fail");
-            let pk = keygen_pk(&params, vk, &circuit).expect("keygen_pk should not fail");
-            let mut transcript = Blake2bWrite::<_, _, Challenge255<_>>::init(vec![]);
-            create_proof(&params, &pk, &[circuit], &[&[]], OsRng, &mut transcript)
-                .expect("proof generation should not fail");
-            let proof: Vec<u8> = transcript.finalize();
+                let params: Params<EqAffine> = Params::new(k);
+                let vk = keygen_vk(&params, &circuit).expect("keygen_vk should not fail");
+                let pk = keygen_pk(&params, vk, &circuit).expect("keygen_pk should not fail");
+                let mut transcript = Blake2bWrite::<_, _, Challenge255<_>>::init(vec![]);
+                create_proof(&params, &pk, &[circuit], &[&[]], OsRng, &mut transcript)
+                    .expect("proof generation should not fail");
+                let proof: Vec<u8> = transcript.finalize();
 
-            let strategy = SingleVerifier::new(&params);
-            let mut transcript = Blake2bRead::<_, _, Challenge255<_>>::init(&proof[..]);
-            let result = verify_proof(&params, pk.get_vk(), strategy, &[&[]], &mut transcript);
-            assert!(result.is_ok());
-        }, "hola2", "proof", num_iter);
+                let strategy = SingleVerifier::new(&params);
+                let mut transcript = Blake2bRead::<_, _, Challenge255<_>>::init(&proof[..]);
+                let result = verify_proof(&params, pk.get_vk(), strategy, &[&[]], &mut transcript);
+                assert!(result.is_ok());
+            },
+            "hola2",
+            "proof",
+            num_iter
+        );
     }
 }

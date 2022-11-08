@@ -16,7 +16,7 @@ mod test {
                 $backend,
                 $task_name,
                 end / $num_iter
-                );
+            );
             res
         };
     }
