@@ -275,11 +275,9 @@ pub fn gen_empty_hashes<F: FieldExt, H: FieldHasher<F, 2>, const N: usize>(
     let mut empty_hashes = [F::zero(); N];
 
     let mut empty_hash = F::from_bytes_wide(default_leaf);
-    empty_hashes[0] = empty_hash;
-
-    for i in 1..N {
+    for item in empty_hashes.iter_mut().take(N) {
+        *item = empty_hash;
         empty_hash = hasher.hash([empty_hash, empty_hash])?;
-        empty_hashes[i] = empty_hash;
     }
 
     Ok(empty_hashes)
