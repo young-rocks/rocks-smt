@@ -155,7 +155,7 @@ impl<F: FieldExt> IsEqualChip<F> {
         advices: [Column<Advice>; NUM_OF_UTILITY_ADVICE_COLUMNS],
     ) -> <Self as Chip<F>>::Config {
         let s_is_eq = meta.selector();
-        meta.create_gate("eq", |meta| {
+        meta.create_gate("is_eq", |meta| {
             let lhs = meta.query_advice(advices[0], Rotation::cur());
             let rhs = meta.query_advice(advices[1], Rotation::cur());
             let out = meta.query_advice(advices[2], Rotation::cur());
@@ -168,10 +168,7 @@ impl<F: FieldExt> IsEqualChip<F> {
                 s_is_eq.clone() * (out.clone() * (one.clone() - out.clone())),
                 // if a != b then (a - b) * inverse(a - b) == 1 - out
                 // if a == b then (a - b) * 1 == 1 - out
-                s_is_eq.clone()
-                    * ((lhs.clone() - rhs.clone()) * delta_invert.clone() + (out - one.clone())),
-                // constrain delta_invert: (a - b) * inverse(a - b) must be 1 or 0
-                s_is_eq * (lhs.clone() - rhs.clone()) * ((lhs - rhs) * delta_invert - one),
+                s_is_eq * ((lhs - rhs) * delta_invert + (out - one)),
             ]
         });
 
@@ -271,7 +268,7 @@ impl<F: FieldExt> AssertEqualChip<F> {
         advices: [Column<Advice>; 2],
     ) -> <Self as Chip<F>>::Config {
         let s_eq = meta.selector();
-        meta.create_gate("eq", |meta| {
+        meta.create_gate("asset_eq", |meta| {
             let lhs = meta.query_advice(advices[0], Rotation::cur());
             let rhs = meta.query_advice(advices[1], Rotation::cur());
             let s_eq = meta.query_selector(s_eq);
@@ -295,7 +292,7 @@ impl<F: FieldExt> AssertEqualChip<F> {
         let config = self.config();
 
         layouter.assign_region(
-            || "is_eq",
+            || "asset_eq",
             |mut region: Region<'_, F>| {
                 config.s_eq.enable(&mut region, 0)?;
 

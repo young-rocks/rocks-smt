@@ -353,7 +353,6 @@ mod test {
     use halo2_proofs::arithmetic::FieldExt;
     use halo2_proofs::pasta::Fp;
     use rand::rngs::OsRng;
-    use std::collections::BTreeMap;
 
     //helper to change leaves array to BTreeMap and then create SMT
     fn create_merkle_tree<F: FieldExt, H: FieldHasher<F, 2>, const N: usize>(
@@ -361,13 +360,7 @@ mod test {
         leaves: &[F],
         default_leaf: &[u8; 64],
     ) -> SparseMerkleTree<F, H, N> {
-        let pairs: BTreeMap<u32, F> = leaves
-            .iter()
-            .enumerate()
-            .map(|(i, l)| (i as u32, *l))
-            .collect();
-
-        SparseMerkleTree::<F, H, N>::new(&pairs, &hasher, default_leaf).unwrap()
+        SparseMerkleTree::<F, H, N>::new_sequential(leaves, &hasher, default_leaf).unwrap()
     }
 
     #[test]
