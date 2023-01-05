@@ -168,7 +168,10 @@ impl<F: FieldExt> IsEqualChip<F> {
                 s_is_eq.clone() * (out.clone() * (one.clone() - out.clone())),
                 // if a != b then (a - b) * inverse(a - b) == 1 - out
                 // if a == b then (a - b) * 1 == 1 - out
-                s_is_eq * ((lhs - rhs) * delta_invert + (out - one)),
+                s_is_eq.clone()
+                    * ((lhs.clone() - rhs.clone()) * delta_invert.clone() + (out - one.clone())),
+                // constrain delta_invert: (a - b) * inverse(a - b) must be 1 or 0
+                s_is_eq * (lhs.clone() - rhs.clone()) * ((lhs - rhs) * delta_invert - one),
             ]
         });
 
